@@ -24,31 +24,27 @@ public class CovidService {
         this.restTemplate = restTemplate;
     }
 
-    private final Function<List<String>, Function<Covid, Boolean>> filterByProvince =
-            provinces -> covid -> provinces.contains(covid.getProvince());
-
     public List<Covid> findByProvince(List<String> provinces) {
-        return requestCovidData().stream()
-                .filter(covid -> provinces.isEmpty() || filterByProvince.apply(provinces).apply(covid))
-                .collect(Collectors.toList());
+        var mappingResponseToCovid = mappingResponseToEntity(Covid.class);
+        var filterByProvinces = filterBy.apply(provinces);
+
+        return filterByProvinces.compose(mappingResponseToCovid).apply(requestCovidData().getBody());
     }
 
-    private List<Covid> requestCovidData() {
-        ResponseEntity<Object[]> response = restTemplate.getForEntity(COVID_API, Object[].class);
-        if (Objects.requireNonNull(response.getBody()).length != 0) {
-            Object[] data = response.getBody();
-            return mappingEntity(data, Covid.class);
-        } else {
-            return List.of();
-        }
+    private ResponseEntity<Object[]> requestCovidData() {
+        return restTemplate.getForEntity(COVID_API, Object[].class);
     }
 
-    private <T> List<T> mappingEntity(Object[] objects, Class<T> type) {
+    private <T> Function<Object[], List<T>> mappingResponseToEntity(Class<T> type) {
         ObjectMapper mapper = new ObjectMapper();
-
-        return Arrays.stream(objects)
+        return objects -> Arrays.stream(objects)
                 .map(object -> mapper.convertValue(object, type))
                 .collect(Collectors.toList());
+
     }
 
+    private final Function<List<String>, Function<List<Covid>, List<Covid>>> filterBy =
+            filterList -> dataList -> dataList.stream()
+                    .filter(data -> filterList.isEmpty() || filterList.contains(data.getProvince()))
+                    .collect(Collectors.toList());
 }
