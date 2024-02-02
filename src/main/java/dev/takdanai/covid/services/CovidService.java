@@ -28,19 +28,18 @@ public class CovidService {
             provinces -> covid -> provinces.contains(covid.getProvince());
 
     public List<Covid> findByProvince(List<String> provinces) {
-        return requestCovidData().orElse(List.of()).stream()
+        return requestCovidData().stream()
                 .filter(covid -> provinces.isEmpty() || filterByProvince.apply(provinces).apply(covid))
-                .sorted(Comparator.comparing(Covid::getProvince))
                 .collect(Collectors.toList());
     }
 
-    private Optional<List<Covid>> requestCovidData() {
+    private List<Covid> requestCovidData() {
         ResponseEntity<Object[]> response = restTemplate.getForEntity(COVID_API, Object[].class);
         if (Objects.requireNonNull(response.getBody()).length != 0) {
             Object[] data = response.getBody();
-            return Optional.of(mappingEntity(data, Covid.class));
+            return mappingEntity(data, Covid.class);
         } else {
-            return Optional.empty();
+            return List.of();
         }
     }
 
